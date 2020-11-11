@@ -7,6 +7,8 @@ import { LanguageClient, LanguageClientOptions, StreamInfo, DocumentFilter, Erro
 import { ExtensionContext, workspace, Uri, TextDocument, WorkspaceConfiguration, OutputChannel, window, WorkspaceFolder } from 'vscode';
 import { getRPath } from './util'
 
+import { registerReadonlyEditors } from './readonly';
+
 let clients: Map<string, LanguageClient> = new Map();
 let initSet: Set<string> = new Set();
 
@@ -130,11 +132,13 @@ function getKey(uri: Uri) {
 
 export function activate(context: ExtensionContext) {
 
+    registerReadonlyEditors(context);
+
     const config = workspace.getConfiguration('r');
     const outputChannel: OutputChannel = window.createOutputChannel('R Language Server');
 
     async function didOpenTextDocument(document: TextDocument) {
-        if (document.uri.scheme !== 'file' && document.uri.scheme !== 'untitled' && document.uri.scheme !== 'vscode-notebook-cell') {
+        if (document.uri.scheme !== 'file' && document.uri.scheme !== 'untitled' && document.uri.scheme !== 'vscode-notebook-cell' && document.uri.scheme !== 'rofile') {
             return;
         }
 
@@ -181,11 +185,12 @@ export function activate(context: ExtensionContext) {
         } else {
 
             // All untitled documents share a server started from home folder
-            if (document.uri.scheme === 'untitled') {
+            if (document.uri.scheme === 'untitled' || document.uri.scheme === 'rofile') {
                 const key = getKey(document.uri);
                 if (!checkClient(key)) {
                     console.log(`Start language server for ${document.uri.toString()}`);
                     const documentSelector: DocumentFilter[] = [
+                        { scheme: 'rofile', language: 'r' },
                         { scheme: 'untitled', language: 'r' },
                         { scheme: 'untitled', language: 'rmd' },
                     ];
